@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+@import url(http://fonts.googleapis.com/css?family=Lato);
+html,body {
+    height:100%;
+    overflow:hidden;
+    font-family: 'Lato', sans-serif;
+    background-color: #f39c12;
+    background-image: url(https://www.transparenttextures.com/patterns/45-degree-fabric-light.png);
+    margin: 0;
+    margin-top:2px;
+}
+a {
+    text-decoration: none;
+}
+#canvas {
+    float: left;
+    width: 100%;
+    height: 100%;
+    background-color: #8a8780;
+    background-image: url(img/45-degree-fabric-light.png);
+}
+#scopes {
+    float: left;
+    width: 100%;
+    height: 32px;
+    border-bottom: 1px solid grey;
+    text-align: center;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    line-height: 24px;
+}
+#scopes:after {
+    position: absolute;
+    content: "";
+    width: 100%;
+    bottom: 0;
+    left: 0;
+    border-bottom: 1px solid #AAA;
+    z-index: 1;
+}
+/*.scope:before {
+  box-shadow: 2px 2px 0 #ECECEC;
+}
+.scope:after {
+  box-shadow: -2px 2px 0 #ECECEC;
+}*/
+.scope {
+    float: left;
+    width: 200px;
+    height: 28px;
+    border-top: 1px solid grey;
+    border-left: 1px solid grey;
+    border-bottom: 1px solid grey;
+    /*padding: 2px;*/
+    background-color: #ccc;
+    background: linear-gradient(to bottom, #ECECEC 50%, #D1D1D1 100%);
+    box-shadow: 0 3px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 #FFF;
+    text-shadow: 0 1px #FFF;
+    margin: 0 0px;
+    padding: 0 4px;
+    border: 1px solid #AAA;
+    background: #ECECEC;
+    display: inline-block;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
+.scope a {
+    width: 200px;
+}
+.scope.active {
+    border-bottom: 1px solid #eee;
+    background-color: #eee;
+    background: #FFF;
+    color: #000;
+}
+
+.postIt {
+    position:absolute;
+    float: left;
+    font-size: 12px;
+    width: 180px;
+    height: 160px;
+    box-shadow: 4px 4px 2px #777;
+}
+.postIt.active {
+    border: 1px solid red;
+    z-index: 999;
+}
+.postIt.min {
+    height: 20px;
+}
+
+.postIt.style2 .topBar {
+    background-color: #0066ff;
+}
+.postIt.style2 .postText {
+   background-color: #8cb3d9;
+}
+.postIt.style3 .topBar {
+    background-color: #DC6904;
+}
+.postIt.style3 .postText {
+    background-color: #CA5E0A;
+}
+
+.topBar {
+  z-index:1;
+  /*position:absolute;*/
+  width: 100%;
+  height: 20px;
+  background-color: #f39c12;
+}
+.topBar a {
+    float: right;
+    color: #999;
+    right: 0;
+    padding-left: 8px;
+    padding-right: 0px;
+}
+.postText {
+    padding: 0px;
+  position:relative;
+  background-color:#f1c40f;
+  border-color:red;
+  width: 100%;
+  height: 140px;
+
+  overflow: hidden;
+  word-wrap: break-word;
+}
+.postText:first-line {
+    font-weight:bold;
+}
+
+}
+
+.postText.min {
+    top: -20px;
+    z-index: 999;
+    background: 0; !important
+    left: 20px;
+    height: 16px;
+}
+
+.postIt .corner {
+    width: 8px;
+    height: 8px;
+    background-color: #CCC;
+    position: absolute;
+    right: 0px;
+    bottom: 0px;
+    cursor: nw-resize;
+}
+
+.codeStyle {
+  font-family: Courier;
+  background-color: #ccc;
+}
+.postText:focus{
+  outline: 0;
+}
+
+#buttons
+{
+     position: fixed;
+     top: 0;
+     right: 0;
+}
+    </style>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+    <script type="text/javascript" src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/rollups/aes.js"></script>
+    <!--script src="http://crypto-js.googlecode.com/svn/tags/3.0.2/build/rollups/md5.js"></script-->
+</head>
+
+<body>
+<div id="scopes">
+
+</div>
+<div id="canvas">
+
+</div>
+<div id="buttons">
+  <a href="javascript:NewBlankNote();">New Note</a>
+  <a href="#">...</a>
+</div>
+<script type="text/javascript">
+var GRID = [20, 20];
+var CHANGE = false;
+var SELECT = -1;
+var EDIT = false;
+var PROPS = {};
+
+function LoadData() {
+    /*$.ajax({
+        url: '/scopes/',
+        dataType: 'json',
+        cache: false
+    }).done(function(data){
+		for(i = 0; i < data['scopes'].length; i++) {
+            sd = data['scopes'][i];
+            AddOrUpdateScope(sd.id, sd.name);
+		}
+    });*/
+    $.ajax({
+        url: '/notes?s=' + SCOPE,
+        dataType: 'json',
+        cache: false
+    }).done(function(data){
+		for(i = 0; i < data['notes'].length; i++) {
+            nd = data['notes'][i];
+            DrawNote(nd);
+		}
+    });
+
+}
+
+function AddOrUpdateScope(sid, sname) {
+    $('#scopes').append("<div id=\"s" + sid + "\" class=\"scope droppable\" dataScope=\"" + sid + "\" onclick=\"window.location='?s=" + sid + "'\">" + sname + "</div>");
+
+    if(sid == SCOPE)
+        $("#s" + SCOPE).addClass('active');
+}
+
+function NewBlankNote() {
+    hiId = 0;
+    for(var i = 0; i < $('.postIt').length; i++)
+        if($('.postIt')[i].id > hiId)
+            hiId = parseInt($('.postIt')[i].id);
+    pos = [100, 100];
+    DrawNote({'id':"", "title": "New note", "typ": ""});
+    CHANGE = true;
+}
+
+function DrawNote(note) {
+    console.log(note);
+    el = $('#canvas').append('<div class="postIt" id="' + note.id + '" dataScope="' + SCOPE + '" dataClass="' + note.typ + '" class="draggable"><div class="topBar">' + note.id + '<a href="javascript:DropNote(' + note.id + ')">&#10006;</a>' +
+          '<a href="javascript:ExportNote(' + note.id + ')">&#x1f4be;</a></div><div class="postText ui-widget-content">' + note.title + '</div><div class="corner draggable">&nbsp;</div></div>');
+
+    pos = new Array(100, 100);
+
+    x = parseInt(pos[0]) - (parseInt(pos[0]) % GRID[0]);
+    y = parseInt(pos[1]) - (parseInt(pos[1]) % GRID[1]);
+
+    $('#' + note.id).animate({top: x, left: y});
+
+    $('#' + note.id)
+        .draggable({ grid: GRID })
+        .dblclick(function(event) {
+            // Support doubleclick = minimize
+            if($('#' + this.id).hasClass('min')) {
+                $('#' + this.id).removeClass('min');
+                $('#' + this.id + ' .postText').removeClass('min');
+                PROPS[this.id]['min'] = 0;
+            }
+            else {
+                $('#' + this.id).addClass('min');
+                $('#' + this.id + ' .postText').addClass('min');
+                PROPS[this.id]['min'] = 1;
+            }
+            CHANGE = true;
+        })
+        .click(function(event){
+            // TODO: Stop drag/resize to trigger this
+            //
+            if ( $(this).is('.ui-draggable-dragging') ) {
+                return;
+            }
+            if($(event.toElement).attr('class') != 'topBar') {
+                $(this).draggable("disable");
+                $('#' + this.id + ' .postText').attr('contenteditable','true');
+                $(this).addClass('active');
+                EDIT = true;
+            }
+        });
+
+    $('#' + note.id + ' .corner')
+            .draggable({ grid: GRID,
+                /*start:function(ev, ui) {
+                    $(this).css("cursor","nw-resize");
+                },*/
+                drag:function(ev, ui){
+                //console.log($(this).css('top') + $(this).css('height') + "/" + $(this).css('left') + $(this).css('width'));
+                h = parseInt($(this).css('top')) + parseInt($(this).css('height'));
+                w = parseInt($(this).css('left')) + parseInt($(this).css('width'));
+
+                //console.log($('#' + $($(this).parent().id + ' .postText')));
+                $(this).parent().css('height', h + 'px');
+                $(this).parent().css('width', w + 'px');
+                $('#' + $(this).parent().attr('id') + ' .postText').css('height', (h - 20) + 'px');
+                //console.log($('#' + $(this).parent().id() + ' .postText'));
+                //console.log($('#' + $(this).parent().id() + ' .postText').css('height'));
+                //$($(this).parent().id + ' .postText').css('width', w + 'px');
+            } })
+            .click(function() {
+                console.log("hmm");
+            if ( $(this).is('.ui-draggable-dragging') ) {
+                console.log("Move stuff");
+                $(this).parent().css('bottom', $(this).css('bottom'));
+                $(this).parent().css('right', $(this).css('right'));
+                return;
+            }
+    });
+
+    $('#' + note.id + " .postText").blur(function() {
+        $(this).parent().draggable("enable");
+        $(this).attr('contenteditable','false');
+        /*$(this).css('height','');*/
+        $(this).parent().removeClass('active');
+        saveState(false);
+        CHANGE = true;
+        EDIT = false;
+        styleText(this);
+    });
+
+    if(note.typ)
+        $('#' + note.id).addClass(note.typ);
+
+    /*if(PROPS[id]['min'] == 1) {
+        $('#' + id).addClass('min');
+        $('#' + id + ' .postText').addClass('min');
+    }*/
+
+}
+
+function DropNote(id) {
+    if($('#' + id + ' .postText').text() != 'Text...') {
+        x = confirm('Really delete?');
+        if(!x)
+            return;
+    }
+    CHANGE=true;
+    $('#' + id).hide();
+    $('#' + id).attr('dataDelete', '1');
+}
+
+function ExportNote(id) {
+    text = $('#' + id + ' .postText').text();
+    uc = "data:text/plain;charset=utf-8," + encodeURIComponent(text);
+    newWindow = window.open(uc, 'Nedlasting');
+}
+
+function styleText(elem) {
+    inputText = $(elem).html();
+    replacePattern1 = /\s(\b(https?):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gim;
+    replacedText = inputText.replace(replacePattern1, '&nbsp;<a href="$1" target="_blank">(Link)</a>');
+    replacedText = replacedText.replace(/\n/g, "<br>");
+    $(elem).html(replacedText);
+}
+
+function saveState(reTrigger){
+    if(CHANGE) {
+        var pData = {'scope': SCOPE, 'notes': []};
+        for(var i = 0; i < $('.postIt').length; i++) {
+            if($($('.postIt')[i]).attr('decrypt') && $($('.postIt')[i]).attr('decrypt') == '1') {
+                // Contains decrypted data, don't transport
+                //console.log("Skip " + i)
+            }
+            else {
+                pData['notes'].push(({'id': $('.postIt')[i].id, 'scope': $($('.postIt')[i]).attr('dataScope'), 'props': PROPS[$('.postIt')[i].id], 'secured': $($('.postIt')[i]).attr('dataSecure'), 'nclass': $($('.postIt')[i]).attr('dataClass'), 'delete': $($('.postIt')[i]).attr('dataDelete'), 'text': $('#' + $('.postIt')[i].id + ' .postText').html(), 'pos': [$('#' + $('.postIt')[i].id).position().top, $('#' + $('.postIt')[i].id).position().left]}));
+            }
+        }
+
+        $.ajax({
+            type: "POST",
+            url: '/notes/',
+            dataType: 'json',
+            contentType: 'application/json',
+            data: JSON.stringify(pData)
+        });
+
+        CHANGE = false;
+    }
+    if(reTrigger != false)
+        setTimeout(saveState, 1000);
+}
+setTimeout(saveState, 1000);
+
+$.urlParam = function(name){
+    var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
+    if (results==null){
+       return null;
+    }
+    else{
+       return results[1] || 0;
+    }
+}
+
+var SCOPE = $.urlParam('s');
+if(SCOPE == null)
+  SCOPE = 1;
+
+LoadData();
+
+function keyUp(e) {
+    if(EDIT) {
+        e.stopPropagation();
+        return;
+    }
+
+    if(e.keyCode == 9) {
+        // TAB
+        if(SELECT > -1) {
+            $($('.postIt')[SELECT]).blur();
+            $($('.postIt')[SELECT]).removeClass('active');
+        }
+        SELECT = ((SELECT + 1) % $('.postIt').length);
+        $($('.postIt')[SELECT]).addClass('active');
+    }
+    if(e.keyCode == 78) {
+        // n
+        NewBlankNote();
+    }
+    if(e.keyCode == 8) {
+        // Backspace
+    }
+}
+// register the handler
+document.addEventListener('keyup', keyUp, false);
+
+// dropping note on different tab/scope
+$("#canvas").droppable({
+    drop: function( e, ui ) {
+        CHANGE = true;
+        if(e.clientY < ($('#scopes').offset().top + $('#scopes').outerHeight())) {
+            for(var i = 0; i < $('#scopes').children().length; i++) {
+                ch = $('#scopes').children()[i];
+                fromX = $(ch).offset().left;
+                toX = fromX + $(ch).outerWidth();
+                if(e.clientX > fromX && e.clientX < toX) {
+                    $(ui.draggable[0]).attr('dataScope', $(ch).attr("dataScope"));
+                    $(ui.draggable[0]).fadeOut();
+                    CHANGE = true;
+                    saveState(false);
+                    return;
+                }
+            }
+        }
+
+    }
+});
+</script>
+</body>
+</html>
