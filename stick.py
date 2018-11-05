@@ -9,7 +9,7 @@ app.config["DEBUG"] = True
 
 SQLALCHEMY_DATABASE_URI = "mysql+mysqlconnector://{username}:{password}@{hostname}/{databasename}".format(
     username="notoms",
-    password="burger123",
+    password="",
     hostname="notoms.mysql.pythonanywhere-services.com",
     databasename="notoms$stick",
 )
